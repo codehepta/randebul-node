@@ -1,0 +1,68 @@
+# randevu-node releases: on a version tag (v1.1.0) build one self-contained binary per platform, attach them to a GitHub Release
+# with their SHA-256 sums, and print the Homebrew formula lines (scripts/bump-node-formula.sh in the platform repository reads the
+# same sums). Nothing here needs a secret beyond the repository's own GITHUB_TOKEN.
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - rid: osx-arm64
+            os: macos-latest
+          - rid: osx-x64
+            os: macos-latest
+          - rid: linux-x64
+            os: ubuntu-latest
+          - rid: linux-arm64
+            os: ubuntu-latest
+          - rid: win-x64
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Publish
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          dotnet publish RandevuNode.csproj -c Release -r ${{ matrix.rid }} -o out -p:Version="$VERSION"
+      - name: Package
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          if [[ "${{ matrix.rid }}" == win-x64 ]]; then
+            (cd out && 7z a -tzip "../dist/randevu-node-$VERSION-${{ matrix.rid }}.zip" randevu-node.exe) >/dev/null
+          else
+            tar -C out -czf "dist/randevu-node-$VERSION-${{ matrix.rid }}.tar.gz" randevu-node
+          fi
+          (cd dist && shasum -a 256 * > "randevu-node-$VERSION-${{ matrix.rid }}.sha256")
+          cat dist/*.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.rid }}
+          path: dist/*
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Sums
+        run: cat dist/*.sha256 > dist/SHA256SUMS && cat dist/SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/SHA256SUMS
+          generate_release_notes: true

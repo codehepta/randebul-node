@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    randevu-node (TASK-0112, ADR-0020 N2): the program that runs beside LM Studio on one of the owner's machines and dials the
+    platform outbound. Stand-alone on purpose — no reference to the platform's modules — so the same source can live in the public
+    repository (deploy/node, scripts/export-node.sh) and be built by anyone with the .NET SDK or installed from a release.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>RandevuNode</RootNamespace>
+    <AssemblyName>randevu-node</AssemblyName>
+    <Version>1.1.0</Version>
+    <IsPublishable>true</IsPublishable>
+    <!-- Self-contained only when publishing: a self-contained executable cannot be referenced by the test project (NETSDK1151). -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained Condition="'$(_IsPublishing)' == 'true'">true</SelfContained>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <RuntimeIdentifiers>osx-arm64;osx-x64;win-x64;linux-x64;linux-arm64</RuntimeIdentifiers>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.11" />
+  </ItemGroup>
+
+</Project>
